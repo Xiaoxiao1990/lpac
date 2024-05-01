@@ -46,3 +46,5 @@ add_subdirectory(cjson)
 add_subdirectory(euicc)
 add_subdirectory(driver)
 add_subdirectory(src)
+
+add_subdirectory(test)
