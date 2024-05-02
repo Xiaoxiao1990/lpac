@@ -8,12 +8,18 @@
 #ifndef SECURITY_IOT_UTILS_H
 #define SECURITY_IOT_UTILS_H
 
+#include <stddef.h>
+#include <stdbool.h>
+#include "types.h"
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C"{
 #endif
 
-#include <stddef.h>
-#include <stdbool.h>
+#define MAX_PATH_LEN    1024
+
+#define swap8(s) (((s) >> 4)|((s) << 4))
 
 #define swap16(s) (         \
     (((s) >> 8) & 0x00ff) | \
@@ -40,6 +46,7 @@ extern "C"{
 
 #define BigEndian                   1
 #define LittleEndian                0
+#define MAX_COMMAND_STRING_LENGTH   1024
 
 char big_endian_test(void);
 
@@ -59,41 +66,33 @@ char big_endian_test(void);
 */
 //#define offsetof(s, m)   (size_t)&(((s *)0)->m)
 
-#define container_of(ptr, type, member) ({                  \
-    const typeof(((type *)0)->member) *__mptr = (ptr);      \
-    (type *)((char *)__mptr - offsetof(type,member));})
+//#define container_of(ptr, type, member) ({                  
+//    const typeof(((type *)0)->member) *__mptr = (ptr);      
+//    (type *)((char *)__mptr - offsetof(type,member));})
 
-int hex2str(const unsigned char *hex, const int hex_len, char *str, int str_len);
+#define is_digital(c)   (c >= '0' && c <= '9') ? true : false
 
-int str2hex(const char *str, unsigned char *hex, int hex_len);
-
+int hex2str(const u8 *hex, u32 hex_len, char *str, u32 str_len);
+int str2hex(const char *str, u8 *hex, u32 hex_len);
 int is_ip_address(const char *s);
-
-bool is_process_running(const char *process);
-
-int get_pid_by_name(const char *process);
-
-int my_kill(const char *process);
-
-int my_pkill(const char *process);
-
-const char *get_time_stamp_string(void);
-
-long long get_time_stamp_value(void);
-
-int get_current_time_hour(void);
-
-int get_current_time_minute(void);
-
-int get_current_time_second(void);
-
-char *get_md5_checksum_from_buffer(const unsigned char *data, size_t len);
-
-char *get_md5_checksum_from_file(const char *file_name);
-
-int my_system(const char *fmt, ...);
-
+int mk_dir(const char *dir);
+int __execute_command(const char *file, const char *func, u32 line, char *resp, size_t resp_len, const char *fmt, ...);
+int hex_char_to_int(char hex);
+int __execute_shell_command(const char *file, const char *func, u32 line, const char *fmt, ...);
+int copy(const char *src, const char *dest);
+int mv(const char *src, const char *dest);
+int string_set(const char **target, const char *value);
+void string_free(const char *string);
+char *strtrim(char *s);
+char *strtrimc(char *s);
 size_t count_ch(const char *src, char c);
+int hex_str_to_hex_data(const char *hex_str, u8 *hex_data);
+
+void half_byte_swap_buffer(u8 *buf, u16 buf_len);
+
+#define execute_shell_command(...)              __execute_shell_command(__FILENAME__, __func__, __LINE__, ##__VA_ARGS__)
+#define execute_command(resp, resp_len, ...)    __execute_command(__FILENAME__, __func__, __LINE__, resp, resp_len, ##__VA_ARGS__)
+
 
 #ifdef __cplusplus
 }

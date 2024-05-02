@@ -11,10 +11,8 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/applet/chip DIR_LPAC_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/applet/notification DIR_LPAC_SRCS)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/applet/profile DIR_LPAC_SRCS)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/parson)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/parson)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/basic_pack)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/basic_pack)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/parson)
+include_directories(${CMAKE_SOURCE_DIR}/basic_pack)
 
 add_executable(lpac_test ${DIR_LPAC_SRCS})
 target_link_libraries(lpac_test euicc-drivers basic_pack)

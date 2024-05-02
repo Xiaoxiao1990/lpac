@@ -11,45 +11,14 @@
 
 #include "logs.h"
 #include "times.h"
-#include "utils.h"
-
-
-static bool log_is_init = false;
-static int log_output = 1;
-
-int get_log_output(void)
-{
-    return log_output;
-}
-
-void set_log_output(int output)
-{
-    log_output = output;
-}
-
-#ifdef _LOG_TO_FILE_
-#include <sys/stat.h>
-#include <dirent.h>
 
 #define FILE_NAME_LEN                       256
 #define FILE_PATH_LEN                       256
 
-static char log_file_name[FILE_NAME_LEN] = { 0 };
+static u8 log_is_init = false;
 
-static int is_dir_exist(const char* dir_path)
-{
-    DIR* dir;
-
-    if (dir_path == NULL)
-        return 0;
-
-    if ((dir = opendir(dir_path)) == NULL)
-        return 0;
-    else
-        closedir(dir);
-
-    return 1;
-}
+#ifdef _LOG_TO_FILE_
+static char log_file_name[FILE_NAME_LEN];
 
 static void create_log_dir(void)
 {
@@ -60,15 +29,10 @@ static void create_log_dir(void)
     if (!is_dir_exist(trace_dir)) {
         mk_dir(trace_dir);
     }
-    printf("Root path of logs:%s\n", trace_dir);
+    printf("Root path of vsim logs:%s\n", trace_dir);
 }
 
-/**
- * Check log files if it is retains too long time
- * NOTE: It should be called periodically
- * @param retain_days
- */
-void log_trim(u32 retain_days)
+void log_trim(void)
 {
     DIR* dir;
     struct dirent* ptr;
@@ -85,7 +49,7 @@ void log_trim(u32 retain_days)
 
     gettimeofday(&tv, NULL);
     timeBegin = tv.tv_sec;
-    timeEnd = timeBegin - retain_days * 24 * 3600;//retain logs for "retain_days" days.
+    timeEnd = timeBegin - 15 * 24 * 3600;//retain logs for 15 days.
     LOGI("current_log_file_name:%s", log_file_name);
     LOGI("Only retain logs for 15 days, cut range:timeBegin=%ld, timeEnd=%ld", timeBegin, timeEnd);
     if ((dir = opendir(basePath)) == NULL) {
@@ -122,16 +86,15 @@ void log_trim(u32 retain_days)
 }
 #endif
 
-static void log_init(void)
+void log_init(void)
 {
 #ifdef _LOG_TO_FILE_
-    create_log_dir();   //create directory
+    create_log_dir();   //create directory  /home/root/linux_cpe/logs
     memset(log_file_name, 0, sizeof(log_file_name));
 
-    snprintf(log_file_name, FILE_NAME_LEN, "%s/%s/%s", LOG_PATH, LOG_DIR, LOG_FILE_NAME);
+    snprintf(log_file_name, FILE_NAME_LEN, "%s/%s/%s.txt", LOG_PATH, LOG_DIR, "cpe_logs");
     printf("Log File Name: %s\n", log_file_name);
 #endif
-
     log_is_init = true;
 }
 
@@ -139,12 +102,6 @@ int log_raw(const char* fmt, ...)
 {
     va_list list;
     char buffer[LOGS_BUFFER_LENGTH];
-
-    if (!log_output)
-        return 0;
-
-    if (!log_is_init)
-        log_init();
 
     va_start(list, fmt);
     vsnprintf(buffer, LOGS_BUFFER_LENGTH, fmt, list);
@@ -156,8 +113,7 @@ int log_raw(const char* fmt, ...)
 
     log_file = fopen(log_file_name, "a+");
 
-    if (log_file == NULL)
-        return -1;
+    if (log_file == NULL)return -1;
 
     fprintf(log_file, "%s\n", buffer);
     fclose(log_file);
@@ -170,9 +126,6 @@ int logs(const char* file, const char* func, u32 line, const char* LOG_COLOR, co
     va_list list;
     struct date_time_str time;
     char buffer[LOGS_BUFFER_LENGTH] = { 0 };
-
-    if (!log_output)
-        return 0;
 
     if (!log_is_init)
         log_init();
@@ -189,10 +142,10 @@ int logs(const char* file, const char* func, u32 line, const char* LOG_COLOR, co
 
     log_file = fopen(log_file_name, "a+");
 
-    if (log_file == NULL)
-        return -1;
+    if (log_file == NULL)return -1;
 
-    fprintf(log_file, "[%s]%s %s  line:%-4d  %s"LOG_RESET_COLOR"\n", time.string, LOG_COLOR, file, line, buffer);
+    //    fprintf(log_file, "[%s]%s %s  %s"LOG_RESET_COLOR"\n", time.string, LOG_COLOR, header, buffer);
+    fprintf(log_file, "[%s] %s %s\n", time.string, header, buffer);
     fclose(log_file);
 #endif
     return 0;
@@ -205,12 +158,6 @@ int log_hex(const u8* arr, u32 arr_len, const char* file, u32 line, const char* 
     size_t i = 0, j = 0;
     char hex[PRINT_BUFFER_LENGTH] = { 0 };
     char notice[PRINT_BUFFER_LENGTH] = { 0 };
-
-    if (!log_output)
-        return 0;
-
-    if (!log_is_init)
-        log_init();
 
     get_datetime_string(&time);
 
@@ -227,18 +174,6 @@ int log_hex(const u8* arr, u32 arr_len, const char* file, u32 line, const char* 
     va_end(list);
 
     printf("[%s]"LOG_COLOR_I" %s  line:%-4d  %s%s"LOG_RESET_COLOR"\n", time.string, file, line, notice, hex);
-
-#ifdef _LOG_TO_FILE_
-    FILE* log_file;
-
-    log_file = fopen(log_file_name, "a+");
-
-    if (log_file == NULL)
-        return -1;
-
-    fprintf(log_file, "[%s]"LOG_COLOR_I" %s  line:%-4d  %s%s"LOG_RESET_COLOR"\n", time.string, file, line, notice, hex);
-    fclose(log_file);
-#endif
 
     return 0;
 }

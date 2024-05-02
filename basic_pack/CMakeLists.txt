@@ -7,9 +7,8 @@ file(GLOB SOURCES "*.c")
 # list(REMOVE_ITEM SOURCES "main.c")
 
 include_directories(.)
-# include_directories(../third_party/parson)
 
 add_library(${MODULE_NAME} ${SOURCES})
-# target_link_libraries(${MODULE_NAME} pthread crypto parson)
+target_link_libraries(${MODULE_NAME} pthread crypto)
 
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -9,265 +9,347 @@
 
 #include "utils.h"
 #include "types.h"
+#include "macros.h"
 #include "logs.h"
 
+#include <memory.h>
 #include <stdarg.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <openssl/md5.h>
 #include <stdio.h>
-#include <string.h>
 
 char big_endian_test(void)
 {
-    /*定义一个2个字节长度的数据，并赋值为1,则n的16进制表示为0x0001
-    如果系统以“大端”存放数据，也即是以MSB方式存放，那么低字节存放的必定是0x00，高字节存放的必定是0x01
-    如果系统以“小端”存放数据，也即是以LSB方式存放，那么低字节存放的必定是0x01，高字节存放的必定是0x00
-    所谓MSB，就是将最重要的位存入低位，而LSB则是将最不重要的位存入低位
-    我们可以通过检测低位的数值就可以知道系统的字节序
-    */
-    const s16 n = 1;
-    if (*(char*)&n) {
-        return LittleEndian;
-    }
-    return BigEndian;
+	/*定义一个2个字节长度的数据，并赋值为1,则n的16进制表示为0x0001
+	如果系统以“大端”存放数据，也即是以MSB方式存放，那么低字节存放的必定是0x00，高字节存放的必定是0x01
+	如果系统以“小端”存放数据，也即是以LSB方式存放，那么低字节存放的必定是0x01，高字节存放的必定是0x00
+	所谓MSB，就是将最重要的位存入低位，而LSB则是将最不重要的位存入低位
+	我们可以通过检测低位的数值就可以知道系统的字节序
+	*/
+	const s16 n = 1;
+	if (*(char *)&n) {
+		return LittleEndian;
+	}
+	return BigEndian;
 }
 
-/**
- * hex string transfer to hex array
- * @param str: input hex string
- * @param hex: output hex array
- * @param hex_len: output hex array storage buffer size
- * @return -1: error occur, others transformed hex array length.
- */
-int str2hex(const char* str, u8* hex, u32 hex_len)
+int str2hex(const char *str, unsigned char *hex, int hex_len)
 {
-    int i = 0;
-    u8 ch;
+	int i = 0;
+	unsigned char ch;
 
-    if (str == NULL || hex == NULL || hex_len <= 0)
-        return -1;
+	if (str == NULL || hex == NULL || hex_len <= 0)
+		return -1;
 
-    while (*str) {
-        if (*str >= '0' && *str <= '9') {
-            ch = *str - '0';
-        } else if (*str >= 'a' && *str <= 'f') {
-            ch = *str - 'a' + 10;
-        } else if (*str >= 'A' && *str <= 'F') {
-            ch = *str - 'A' + 10;
-        } else {
-            return -1;
-        }
+	while (*str) {
+		if (*str >= '0' && *str <= '9') {
+			ch = *str - '0';
+		} else if (*str >= 'a' && *str <= 'f') {
+			ch = *str - 'a' + 10;
+		} else if (*str >= 'A' && *str <= 'F') {
+			ch = *str - 'A' + 10;
+		} else {
+			return -1;
+		}
 
-        if ((i % 2) == 0)
-            hex[i / 2] = (u8)((ch << 4) & 0xF0);
-        else {
-            hex[i / 2] |= (ch & 0x0F);
-            if (i / 2 >= hex_len)
-                return (int)hex_len;
-        }
-        i++;
-        str++;
-    }
+		if ((i % 2) == 0)
+			hex[i / 2] = (unsigned char)((ch << 4) & 0xF0);
+		else {
+			hex[i / 2] |= (ch & 0x0F);
+			if (i / 2 >= hex_len)
+				return hex_len;
+		}
+		i++;
+		str++;
+	}
 
-    return i >> 1;
+	return i >> 1;
 }
 
-int hex2str(const u8* hex, u32 hex_len, char* str, u32 str_len)
+int hex2str(const unsigned char *hex, const int hex_len, char *str, int str_len)
 {
-    char ch[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-    int i = 0, j = 0;
+	char ch[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+	int i = 0, j = 0;
 
-    if ((hex == NULL) || (str == NULL) || hex_len <= 0 || str_len <= 0)
-        return -1;
+	if ((hex == NULL) || (str == NULL) || hex_len <= 0 || str_len <= 0)
+		return -1;
 
-    while ((i + 2) <= str_len) {
-        str[i++] = ch[((hex[j] >> 4) & 0x0F)];
-        str[i++] = ch[(hex[j++] & 0x0F)];
-        str[i] = 0;
-        if (j >= hex_len)
-            break;
-    }
+	while ((i + 2) < str_len) {
+		str[i++] = ch[((hex[j] >> 4) & 0x0F)];
+		str[i++] = ch[(hex[j++] & 0x0F)];
+		str[i] = 0;
+		if (j >= hex_len)
+			break;
+	}
 
-    return i;
+	return i;
 }
 
 /* naive function to check whether char *s is an ip address */
-int is_ip_address(const char* s)
+int is_ip_address(const char *s)
 {
-    u32 n1, n2, n3, n4;
+	u32 n1, n2, n3, n4;
 
-    if (sscanf(s, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) != 4)
-        return 0;
+	if (sscanf(s, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) != 4)
+		return 0;
 
-    if ((n1 <= 255) && (n2 <= 255) && (n3 <= 255) && (n4 <= 255))
-        return 1;
+	if ((n1 <= 255) && (n2 <= 255) && (n3 <= 255) && (n4 <= 255))
+		return 1;
 
-    return 0;
+	return 0;
 }
 
-int mk_path(const char* path)
+bool is_process_running(const char *process)
 {
-    char command[MAX_PATH_LEN];
+	char cmd[MAX_COMMAND_STRING_LENGTH];
+	int num = -1;
+	FILE *pF = NULL;
 
-    if (path == NULL)return -1;
+	snprintf(cmd, MAX_COMMAND_STRING_LENGTH, "ps | grep \"%s$\" | grep -v grep | wc -l", process);
+	if ((pF = popen(cmd, "r")) == NULL) {
+		return false;
+	}
 
-    if (snprintf(command, MAX_PATH_LEN, "mkdir -p %s", path) == 0)return -1;
+	if (1 != fscanf(pF, "%d", &num)) {
+		pclose(pF);
+		return false;
+	}
 
-    return system(command);
+	pclose(pF);
+
+	if (num == 0)
+		return false;
+	else
+		return true;
 }
 
-int __execute_command(const char* file, const char* func, u32 line, char* resp, size_t resp_len, const char* fmt, ...)
+int get_pid_by_name(const char *process)
 {
-    va_list list;
-    FILE* pF = NULL;
-    int res;
-    static char cmd[MAX_COMMAND_STRING_LENGTH] = { 0 };
+	char cmd[MAX_COMMAND_STRING_LENGTH];
+	int num = -1;
+	FILE *pF = NULL;
 
-    if (resp_len < 0 || resp == NULL) {
-        LOGE("No space for command response!");
-        return -1;
-    }
+	snprintf(cmd, MAX_COMMAND_STRING_LENGTH, "ps |grep %s |grep -v grep|awk '{print $1}'", process);
+	if ((pF = popen(cmd, "r")) == NULL) {
+		return -1;
+	}
 
-    memset(cmd, 0, MAX_COMMAND_STRING_LENGTH);
+	if (1 != fscanf(pF, "%d", &num)) {
+		pclose(pF);
+		return -1;
+	}
 
-    va_start(list, fmt);
-    vsnprintf(cmd, MAX_COMMAND_STRING_LENGTH, fmt, list);
-    va_end(list);
+	pclose(pF);
 
-    //    LOGI("command: %s", cmd);
-    logs(file, "", line, LOG_COLOR_I, "%s call execute_command: %s", func, cmd);
-
-    if ((pF = popen(cmd, "r")) == NULL) {
-        return -1;
-    }
-
-    if (fread(resp, 1, resp_len, pF) < 0) {
-        LOGE("Get response error!");
-        res = -1;
-    } else
-        res = 0;
-
-    pclose(pF);
-
-    return res;
+	return num;
 }
 
-int hex_char_to_int(char hex)
+int my_kill(const char *process)
 {
-    int outHex;
+	char cmd[MAX_COMMAND_STRING_LENGTH];
+	FILE *pF = NULL;
+	int pid = get_pid_by_name(process);
 
-    if (isdigit(hex)) {
-        outHex = hex - '0';
-    } else if (isupper(hex)) {
-        outHex = hex - 'A' + 10;
-    } else {
-        outHex = hex - 'a' + 10;
-    }
+	if (pid < 0)
+		return -1;
 
-    return outHex;
+	snprintf(cmd, MAX_COMMAND_STRING_LENGTH, "kill -9 %d", pid);
+	LOGI("{Kill process[%s]}[%s]", process, cmd);
+	if ((pF = popen(cmd, "r")) == NULL) {
+		return -1;
+	}
+	pclose(pF);
+
+	return 0;
 }
 
-int __execute_shell_command(const char* file, const char* func, u32 line, const char* fmt, ...)
+
+int my_pkill(const char *process)
 {
-    va_list list;
-    char cmd[MAX_PATH_LEN] = { 0 };
+	int pid;
 
-    va_start(list, fmt);
-    vsnprintf(cmd, LOGS_BUFFER_LENGTH, fmt, list);
-    va_end(list);
+	do {
+		pid = get_pid_by_name(process);
+		if (pid < 0)
+			break;
 
-    logs(file, "", line, LOG_COLOR_I, "%s: %s", func, cmd);
+		LOGI("Kill pid:%d", pid);
+		my_kill(process);
+	} while (1);
 
-    return system(cmd);
+	return 0;
 }
 
-int copy(const char* src, const char* dest)
+static char time_stamp_string[TIME2STR_LEN];
+
+const char *get_time_stamp_string(void)
 {
-    return execute_shell_command("cp %s %s", src, dest);
+	struct timeval us;
+
+	gettimeofday(&us, NULL);
+	snprintf(time_stamp_string, TIME2STR_LEN, "%lld", (long long)us.tv_sec * 1000 + us.tv_usec / 1000);
+	return time_stamp_string;
 }
 
-int mv(const char* src, const char* dest)
+long long get_time_stamp_value(void)
 {
-    return execute_shell_command("mv %s %s", src, dest);
+	struct timeval us;
+
+	gettimeofday(&us, NULL);
+	return (long long)us.tv_sec * 1000 + us.tv_usec / 1000;
 }
 
-int string_set(const char** target, const char* value)
+int get_current_time_hour(void)
 {
-    if (target == NULL)
-        return -1;
+	time_t seconds;
+	struct tm now;
 
-    if (*target)
-        free((void*)*target);
+	seconds = time(0);
+	localtime_r(&seconds, &now);
 
-    *target = strdup(value);
+//	printf("%d-%d-%d ", (1900 + now.tm_year), (1 + now.tm_mon), now.tm_mday);
+//	printf("%d:%d:%d\n", now.tm_hour, now.tm_min, now.tm_sec);
 
-    return 0;
+	return now.tm_hour;
 }
 
-void string_free(const char* string)
+int get_current_time_minute(void)
 {
-    if (string)
-        free((void*)string);
+	time_t seconds;
+	struct tm now;
+
+	seconds = time(0);
+	localtime_r(&seconds, &now);
+
+//	printf("%d-%d-%d ", (1900 + now.tm_year), (1 + now.tm_mon), now.tm_mday);
+//	printf("%d:%d:%d\n", now.tm_hour, now.tm_min, now.tm_sec);
+
+	return now.tm_min;
 }
 
-/*****************************************************************************
- 函 数 名  : strtrim
- 功能描述  : 删除行首、行尾空白符号
- 输入参数  : char *is
- 输出参数  : 无
- 返 回 值  : char *
-*****************************************************************************/
-char* strtrim(char* s)
+int get_current_time_second(void)
 {
-    char* p = s;
-    char* q = s;
+	time_t seconds;
+	struct tm now;
 
-    //去掉行首的空格
-    while (*p == ' ' || *p == '\t')
-        ++p;
-    //赋值
-    while ((p != NULL) && (q != NULL) && (*p != '\0') && (*p != '\0')) {
-        *q++ = *p++;
-    };
+	seconds = time(0);
+	localtime_r(&seconds, &now);
 
-    //删除'\0'字符 注意是 -2 上面q++是先操作再自加
-    q -= 2;
-    //去掉行末的空格
-    while (*q == ' ' || *q == '\t')
-        --q;
-    //给字符串添加字符结束标志
-    *(q + 1) = '\0';
-    //这里的return s要注意看好
-    //因为p q经过一系列操作后，已经不是原来的位置，越界了 ，s还在原来位置，所以return s才是正确的。
-    return s;
+//	printf("%d-%d-%d ", (1900 + now.tm_year), (1 + now.tm_mon), now.tm_mday);
+//	printf("%d:%d:%d\n", now.tm_hour, now.tm_min, now.tm_sec);
+
+	return now.tm_sec;
 }
 
-/*****************************************************************************
- 函 数 名  : strtrimc
- 功能描述  : 删除字符串空白符,包括行首和行尾
- 输入参数  : char * s
- 输出参数  : 无
- 返 回 值  : char *
-*****************************************************************************/
-char* strtrimc(char* s)
+static char file_md5_checksum[MD5_DIGEST_LENGTH * 2 + 1];
+char *get_md5_checksum_from_buffer(const unsigned char *data, size_t len)
 {
-    char* p1 = s;
-    char* p2 = s;
+	char md[MD5_DIGEST_LENGTH] = {0};
 
-    while (*p1 != '\0') {
-        while (*p1 == ' ' || *p1 == '\t') {
-            p1++;
-        }
-        *p2++ = *p1++;
-    }
-
-    *p2 = '\0';
-
-    return (s);
+	MD5(data, len, md);
+	memset(file_md5_checksum, 0, sizeof(file_md5_checksum));
+	for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+		sprintf(file_md5_checksum + i * 2, "%02x", md[i]);
+	}
+	file_md5_checksum[MD5_DIGEST_LENGTH * 2] = '\0';
+	return file_md5_checksum;
 }
 
-size_t count_ch(const char* src, char c)
+char *get_md5_checksum_from_file(const char *file_name)
+{
+	FILE* fp = NULL;
+	unsigned char md5_hex[MD5_DIGEST_LENGTH];
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t nread;
+	MD5_CTX ctx;
+
+	fp = fopen(file_name, "rb");
+	if (NULL == fp) {
+		return NULL;
+	}
+
+	MD5_Init(&ctx);
+
+	while ((nread = getline(&line, &len, fp)) != -1) {
+		MD5_Update(&ctx, line, nread);
+	}
+	free(line);
+	MD5_Final(md5_hex, &ctx);
+	fclose(fp);
+
+	memset(file_md5_checksum, 0, sizeof(file_md5_checksum));
+
+	for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+		sprintf(file_md5_checksum + i * 2, "%02x", md5_hex[i]);
+	}
+	file_md5_checksum[MD5_DIGEST_LENGTH * 2] = '\0';
+
+	return file_md5_checksum;
+}
+
+int my_system(const char *fmt, ...) /* with appropriate signal handling */
+{
+	va_list list;
+	char cmdstring[MAX_COMMAND_STRING_LENGTH] = {0};
+	pid_t pid;
+	int status;
+	struct sigaction ignore, saveintr, savequit;
+	sigset_t chldmask, savemask;
+
+	va_start(list, fmt);
+	vsnprintf(cmdstring, MAX_COMMAND_STRING_LENGTH, fmt, list);
+	va_end(list);
+
+	if (cmdstring == NULL)
+		return (1); /* always a command processor with UNIX */
+
+	ignore.sa_handler = SIG_IGN; /* ignore SIGINT and SIGQUIT */
+	sigemptyset(&ignore.sa_mask);
+	ignore.sa_flags = 0;
+	if (sigaction(SIGINT, &ignore, &saveintr) < 0)
+		return (-1);
+	if (sigaction(SIGQUIT, &ignore, &savequit) < 0)
+		return (-1);
+	sigemptyset(&chldmask); /* now block SIGCHLD */
+	sigaddset(&chldmask, SIGCHLD);
+	if (sigprocmask(SIG_BLOCK, &chldmask, &savemask) < 0)
+		return (-1);
+
+	if ((pid = fork()) < 0) {
+		status = -1; /* probably out of processes */
+	} else if (pid == 0) { /* child */
+		/* restore previous signal actions & reset signal mask */
+		sigaction(SIGINT, &saveintr, NULL);
+		sigaction(SIGQUIT, &savequit, NULL);
+		sigprocmask(SIG_SETMASK, &savemask, NULL);
+		execl("/bin/sh", "sh", "-c", cmdstring, (char *)0);
+		_exit(127); /* exec error */
+	} else { /* parent */
+		while (waitpid(pid, &status, 0) < 0)
+			if (errno != EINTR) {
+				status = -1; /* error other than EINTR from waitpid() */
+				break;
+			}
+	}
+
+	/* restore previous signal actions & reset signal mask */
+	if (sigaction(SIGINT, &saveintr, NULL) < 0)
+		return (-1);
+	if (sigaction(SIGQUIT, &savequit, NULL) < 0)
+		return (-1);
+	if (sigprocmask(SIG_SETMASK, &savemask, NULL) < 0)
+		return (-1);
+
+	return (status);
+}
+
+size_t count_ch(const char *src, char c)
 {
     size_t cnt = 0;
     size_t i = 0;
@@ -277,61 +359,4 @@ size_t count_ch(const char* src, char c)
     }
 
     return cnt;
-}
-
-int hex_str_to_hex_data(const char* hex_str, u8* hex_data)
-{
-    const char* p = hex_str;
-    u8 data;
-    int len = 0;
-
-    if (!p)
-        return -1;
-
-    if (strlen(p) < 1)
-        return -1;
-
-    while (*p) {
-        if (*p >= '0' && *p <= '9') {
-            data = *p - '0';
-        } else if (*p >= 'a' && *p <= 'f') {
-            data = *p - 'a' + 0x0A;
-        } else if (*p >= 'A' && *p <= 'F') {
-            data = *p - 'A' + 0x0A;
-        } else {
-            p++;
-            continue;
-        }
-        data <<= 4;
-        p++;
-
-        if (!(*p)) {
-            *hex_data = data;
-            break;
-        }
-
-        if (*p >= '0' && *p <= '9') {
-            data |= *p - '0';
-        } else if (*p >= 'a' && *p <= 'f') {
-            data |= *p - 'a' + 0x0A;
-        } else if (*p >= 'A' && *p <= 'F') {
-            data |= *p - 'A' + 0x0A;
-        } else {
-            p++;
-            continue;
-        }
-        *hex_data = data;
-        hex_data++;
-        len++;
-        p++;
-    }
-
-    return len;
-}
-
-void half_byte_swap_buffer(u8* buf, u16 buf_len)
-{
-    for (int i = 0; i < buf_len; ++i) {
-        buf[i] = swap8(buf[i]);
-    }
 }

@@ -11,6 +11,12 @@
 #include "types.h"
 #include <string.h>
 
+//#define _LOG_TO_FILE_
+#ifdef _LOG_TO_FILE_
+#define LOG_PATH                 "/home/root/linux_cpe"
+#define LOG_DIR                  "logs"
+#endif
+
 #define LOGS_BUFFER_LENGTH             2048
 #define PRINT_BUFFER_LENGTH            2048
 
@@ -27,42 +33,24 @@
 #define LOG_COLOR_E       LOG_COLOR(LOG_COLOR_RED)
 #define LOG_COLOR_W       LOG_COLOR(LOG_COLOR_BROWN)
 #define LOG_COLOR_I       LOG_COLOR(LOG_COLOR_YELLOW)
-#define LOG_COLOR_D
-#define LOG_COLOR_V
+#define LOG_COLOR_D		  LOG_COLOR(LOG_COLOR_PURPLE)
+#define LOG_COLOR_V	  	  LOG_COLOR(LOG_COLOR_CYAN)
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
-/**
- * A functional option of whether write the logs info a file or not.
- */
-// #define _LOG_TO_FILE_
-#ifdef _LOG_TO_FILE_
-#define LOG_PATH                "/data/showmac"
-#define LOG_DIR                 "logs"
-#define LOG_FILE_NAME			"showmac.log"
+void log_init(void);
 
-/**
- * Check log files if it is retains too long time
- * NOTE: It should be called periodically
- * @param retain_days
- */
-void log_trim(u32 retain_days);
+void log_trim(void);
 
-#endif
+int log_raw(const char* fmt, ...);
 
-int get_log_output(void);
+int logs(const char* file, const char* func, u32 line, const char* LOG_COLOR, const char* fmt, ...);
 
-void set_log_output(int output);
+int log_hex(const u8* arr, u32 arr_len, const char* file, u32 line, const char* fmt, ...);
 
-int log_raw(const char *fmt, ...);
-
-int logs(const char *file, const char *func, u32 line, const char *LOG_COLOR, const char *fmt, ...);
-
-int log_hex(const u8 *arr, u32 arr_len, const char *file, u32 line, const char *fmt, ...);
-
-#define CONSTANT_STRING_DEFINE(s)  const char * const s##_CONST_STRING = #s
+#define CONSTANT_STRING_DEFINE(s)  	const char * const s##_CONST_STRING = #s
 #define CONSTANT_STRING_DECLARE(s)  extern const char * const s##_CONST_STRING
 
 #define __FILENAME__                (strrchr(__FILE__, '/') ? (strrchr(__FILE__, '/') + 1):__FILE__)
@@ -71,8 +59,11 @@ int log_hex(const u8 *arr, u32 arr_len, const char *file, u32 line, const char *
 #define LOGI(...)                   logs(__FILENAME__, __func__, __LINE__, LOG_COLOR_I, ##__VA_ARGS__)
 #define LOGE(...)                   logs(__FILENAME__, __func__, __LINE__, LOG_COLOR_E, ##__VA_ARGS__)
 #define LOGW(...)                   logs(__FILENAME__, __func__, __LINE__, LOG_COLOR_W, ##__VA_ARGS__)
+#define LOGD(...)                   logs(__FILENAME__, __func__, __LINE__, LOG_COLOR_D, ##__VA_ARGS__)
+#define LOGV(...)                   logs(__FILENAME__, __func__, __LINE__, LOG_COLOR_V, ##__VA_ARGS__)
+
 #define LOG_HEX(_arr, _len, ...)    log_hex(_arr, _len, __FILENAME__ , __LINE__, ##__VA_ARGS__)
-#define LOG_MARK        LOGI("")
+#define LOG_MARK        			LOGI("")
 
 #ifdef __cplusplus
 }

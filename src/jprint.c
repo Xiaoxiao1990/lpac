@@ -3,8 +3,21 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <common_json.h>
 
-void jprint_error(const char *function_name, const char *detail)
+static void json_print_pretty(const char* msg)
+{
+    JSON_Value* root_value = json_parse_string(msg);
+    if (root_value == NULL) {
+        return;
+    }
+
+    JSON_Object* obj = json_object(root_value);
+
+    
+}
+
+void jprint_error(const char* function_name, const char* detail)
 {
     cJSON *jroot = NULL;
     cJSON *jpayload = NULL;
@@ -26,7 +39,12 @@ void jprint_error(const char *function_name, const char *detail)
     jstr = cJSON_PrintUnformatted(jroot);
     cJSON_Delete(jroot);
 
-    printf("%s\r\n", jstr);
+    // printf("%s\r\n", jstr);
+
+    JSON_Object* obj = json_object_create_by_str(jstr);
+    json_print(obj, "error: ");
+    json_object_destroy(obj);
+
     fflush(stdout);
     free(jstr);
 }
@@ -48,7 +66,11 @@ void jprint_progress(const char *function_name)
     jstr = cJSON_PrintUnformatted(jroot);
     cJSON_Delete(jroot);
 
-    printf("%s\r\n", jstr);
+    // printf("%s\r\n", jstr);
+    JSON_Object* obj = json_object_create_by_str(jstr);
+    json_print(obj, "progress: ");
+    json_object_destroy(obj);
+
     fflush(stdout);
     free(jstr);
 }
@@ -77,7 +99,11 @@ void jprint_success(cJSON *jdata)
     jstr = cJSON_PrintUnformatted(jroot);
     cJSON_Delete(jroot);
 
-    printf("%s\r\n", jstr);
+    // printf("%s\r\n", jstr);
+    JSON_Object* obj = json_object_create_by_str(jstr);
+    json_print(obj, "success: ");
+    json_object_destroy(obj);
+
     fflush(stdout);
     free(jstr);
 }
