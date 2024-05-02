@@ -5,8 +5,8 @@
  * Copyright (c) 2022 all rights reserved.
 *********************************************************************/
 
-#ifndef __UART_H__
-#define __UART_H__
+#ifndef __HAL_UART_H__
+#define __HAL_UART_H__
 
 #include "types.h"
 
@@ -42,4 +42,4 @@ typedef struct{
 int uart_init(uart_t *uart, int has_buffer);
 void uart_deinit(uart_t *uart, int has_buffer);
 
-#endif /* __UART_H__ */
+#endif /* __HAL_UART_H__ */

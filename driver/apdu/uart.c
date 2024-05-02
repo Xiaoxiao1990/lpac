@@ -7,6 +7,7 @@
  * @Copyright (C) 2024 all right reserved
 ***********************************************************************/
 #include "uart.h"
+#include "hal_uart.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -26,27 +27,133 @@
 #define APDU_CLOSELOGICCHANNEL "\x00\x70\x80\xFF\x00"
 #define APDU_SELECT_HEADER "\x00\xA4\x04\x00\xFF"
 
-static FILE *fuart;
+static uart_t uart_device = {
+    .dev_path = "/dev/ttyUSB0",
+    .baud_rate = 115200,
+    .data_bits = 8,
+    .stop_bits = 1,
+    .parity = 'N',
+    .fd = -1,
+    .buffer = NULL,
+};
+
 static int logic_channel = 0;
+
+
+static int uart_device_open(const char* device)
+{
+    uart_t* uart = &uart_device;
+    int ret = uart_init(uart, 0);
+    if (ret != 0) {
+        LOGE("uart init failed");
+        return -1;
+    }
+
+    LOGI("uart device open: %s", device);
+
+    return 0;
+}
+
+static int uart_device_close()
+{
+    uart_t* uart = &uart_device;
+
+    uart_deinit(uart, 0);
+
+    return 0;
+}
+
+static int uart_device_write(const char* data, int len)
+{
+    uart_t* uart = &uart_device;
+
+    if (uart->fd < 0) {
+        LOGE("uart device is not open");
+        return -1;
+    }
+
+    int ret = write(uart->fd, data, len);
+    if (ret != len) {
+        LOGE("write data failed");
+        return -1;
+    }
+
+    return ret;
+}
+
+static int uart_device_read(char* data, int len)
+{
+    uart_t* uart = &uart_device;
+
+    if (uart->fd < 0) {
+        LOGE("uart device is not open");
+        return -1;
+    }
+
+    int ret = read(uart->fd, data, len);
+    if (ret < 0) {
+        LOGE("read data failed");
+        return -1;
+    }
+
+    return ret;
+}
+
+// read data from uart device with timeout
+// static int uart_device_read_timeout(char* data, int len, int timeout)
+// {
+//     uart_t* uart = &uart_device;
+//     fd_set rfds;
+//     struct timeval tv;
+//     int ret;
+
+//     if (uart->fd < 0) {
+//         LOGE("uart device is not open");
+//         return -1;
+//     }
+
+//     FD_ZERO(&rfds);
+//     FD_SET(uart->fd, &rfds);
+
+//     tv.tv_sec = timeout;
+//     tv.tv_usec = 0;
+
+//     ret = select(uart->fd + 1, &rfds, NULL, NULL, &tv);
+//     if (ret < 0) {
+//         LOGE("select error");
+//         return -1;
+//     } else if (ret == 0) {
+//         LOGE("select timeout");
+//         return -1;
+//     }
+
+//     ret = read(uart->fd, data, len);
+//     if (ret < 0) {
+//         LOGE("read data failed");
+//         return -1;
+//     }
+
+//     return ret;
+// }
+
+
 
 static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* tx, const uint8_t tx_len)
 {
-    int ret;
-    size_t n;
-
-    n = fwrite(tx, 1, tx_len, fuart);
-    if (n != tx_len) {
-        LOGE("Failed to write to device!");
+    int ret = uart_device_write(tx, tx_len);
+    if (ret != tx_len) {
+        LOGE("uart device write failed!");
         return -1;
     }
 
-    n = fread(rx, 1, EUICC_INTERFACE_BUFSZ, fuart);
-    if (n == 0) {
-        LOGE("Failed to read from device!");
+    // ret = uart_device_read_timeout(rx_data, UART_RX_BUFFER_SIZE, 2);
+    ret = uart_device_read(rx, EUICC_INTERFACE_BUFSZ);
+    if (ret < 0) {
+        LOGE("uart device read failed!");
         return -1;
     }
 
-    *rx_len = n;
+    *rx_len = ret;
 
     return 0;
 }
@@ -142,9 +249,8 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
         device = "/dev/ttyUSB0";
     }
 
-    fuart = fopen(device, "r+");
-    if (fuart == NULL) {
-        LOGE("Failed to open device: %s", device);
+    if (uart_device_open(device) < 0) {
+        LOGE("Open device: %s failed!", device);
         return -1;
     }
 
@@ -158,8 +264,7 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
 
 static void apdu_interface_disconnect(struct euicc_ctx* ctx)
 {
-    fclose(fuart);
-    fuart = NULL;
+    uart_device_close();
     logic_channel = 0;
 }
 

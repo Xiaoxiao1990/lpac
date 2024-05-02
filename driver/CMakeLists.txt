@@ -51,6 +51,7 @@ endif()
 
 if(LPAC_WITH_APDU_UART)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLPAC_WITH_APDU_UART")
+    target_sources(euicc-drivers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/apdu/hal_uart.c)
     target_sources(euicc-drivers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/apdu/uart.c)
 endif()
 

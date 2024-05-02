@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <errno.h>
-#include "uart.h"
+#include "hal_uart.h"
 
 
 #define COLORFUL_LOG(fmt, ...) \

@@ -5,7 +5,7 @@
  * Copyright (c) 2022 all rights reserved.
 *********************************************************************/
 
-#include "uart.h"
+#include "hal_uart.h"
 #include "security_memory.h"
 #include "logs.h"
 
