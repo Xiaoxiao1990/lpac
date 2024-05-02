@@ -17,8 +17,8 @@
 #define LOG_DIR                  "logs"
 #endif
 
-#define LOGS_BUFFER_LENGTH             2048
-#define PRINT_BUFFER_LENGTH            2048
+#define LOGS_BUFFER_LENGTH             4096
+#define PRINT_BUFFER_LENGTH            LOGS_BUFFER_LENGTH
 
 #define LOG_COLOR_BLACK   "30"
 #define LOG_COLOR_RED     "31"

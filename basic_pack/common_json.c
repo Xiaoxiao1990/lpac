@@ -18,7 +18,7 @@ void json_print_raw(const char *file, uint32_t line, JSON_Object *obj, const cha
     vsnprintf(buffer, LOGS_BUFFER_LENGTH, fmt, list);
     va_end(list);
 
-    logs(file, "", line, LOG_COLOR_I,"%s%s", buffer, msg);
+    logs(file, "", line, LOG_COLOR_I, "%s%s", buffer, msg);
 
     json_free_serialized_string(msg);
 }

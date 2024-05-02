@@ -28,7 +28,7 @@
 #define APDU_SELECT_HEADER "\x00\xA4\x04\x00\xFF"
 
 static uart_t uart_device = {
-    .dev_path = "/dev/ttyUSB0",
+    .dev_path = "/dev/ttyUSB1",
     .baud_rate = 115200,
     .data_bits = 8,
     .stop_bits = 1,
@@ -163,9 +163,9 @@ static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* 
             LOGE("uart device read failed!");
             return -1;
         }
-        n += ret;
-        LOG_HEX(rx, ret, "Received[%2d]", ret);
 
+        LOG_HEX(rx + n, ret, "Received[%2d]", ret);
+        n += ret;
     } while (n < expected_len);
 
     *rx_len = n;
