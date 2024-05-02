@@ -1,8 +1,12 @@
 include(CMakeDependentOption)
 cmake_dependent_option(LPAC_DYNAMIC_DRIVERS "Build lpac/libeuicc driver backends as a dynamic library" OFF "LPAC_DYNAMIC_LIBEUICC" OFF)
 
-option(LPAC_WITH_APDU_PCSC "Build APDU PCSC Backend (requires PCSC libraries)" ON)
-option(LPAC_WITH_APDU_AT "Build APDU AT Backend" ON)
+option(LPAC_WITH_APDU_PCSC "Build APDU PCSC Backend (requires PCSC libraries)" OFF)
+
+option(LPAC_WITH_APDU_AT "Build APDU AT Backend" OFF)
+
+option(LPAC_WITH_APDU_UART "Build APDU UART Backend" ON)
+
 option(LPAC_WITH_APDU_GBINDER "Build APDU Gbinder backend for libhybris devices (requires gbinder headers)" OFF)
 
 option(LPAC_WITH_HTTP_CURL "Build HTTP Curl interface" ON)
@@ -43,6 +47,11 @@ endif()
 if(LPAC_WITH_APDU_AT)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLPAC_WITH_APDU_AT")
     target_sources(euicc-drivers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/apdu/at.c)
+endif()
+
+if(LPAC_WITH_APDU_UART)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLPAC_WITH_APDU_UART")
+    target_sources(euicc-drivers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/apdu/uart.c)
 endif()
 
 if(LPAC_WITH_APDU_GBINDER)

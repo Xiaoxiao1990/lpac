@@ -337,11 +337,13 @@ static int libapduinterface_init(struct euicc_apdu_interface *ifstruct)
 
 static int libapduinterface_main(int argc, char **argv)
 {
+    printf("driver STDIO in use!\n");
     return 0;
 }
 
 static void libapduinterface_fini(void)
 {
+    printf("driver STDIO fini!\n");
 }
 
 const struct euicc_driver driver_apdu_stdio = {
