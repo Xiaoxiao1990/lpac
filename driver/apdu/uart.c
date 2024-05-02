@@ -37,9 +37,6 @@ static uart_t uart_device = {
     .buffer = NULL,
 };
 
-static int logic_channel = 0;
-
-
 static int uart_device_open(const char* device)
 {
     uart_t* uart = &uart_device;
@@ -141,8 +138,9 @@ static int uart_device_read(char* data, int len)
 static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* tx, const uint8_t tx_len)
 {
     int ret;
+    uint32_t n = 0;
 
-    LOG_HEX(tx, tx_len, "TX[%d]", tx_len);
+    LOG_HEX(tx, tx_len, "TX[%2d]", tx_len);
 
     ret = uart_device_write(tx, tx_len);
     if (ret != tx_len) {
@@ -151,15 +149,28 @@ static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* 
     }
 
     // ret = uart_device_read_timeout(rx_data, UART_RX_BUFFER_SIZE, 2);
-    ret = uart_device_read(rx, EUICC_INTERFACE_BUFSZ);
-    if (ret < 0) {
-        LOGE("uart device read failed!");
-        return -1;
+    uint32_t expected_len = 0;
+    if (tx[1] == 0x70 || tx[1] == 0xC0 || tx[1] == 0xB0) {
+        expected_len = tx[4] + 2;
+    } else {
+        expected_len = 2;
     }
 
-    *rx_len = ret;
+    LOGI("expected_len: %d", expected_len);
+    do {
+        ret = uart_device_read(rx + n, expected_len - n);
+        if (ret < 0) {
+            LOGE("uart device read failed!");
+            return -1;
+        }
+        n += ret;
+        LOG_HEX(rx, ret, "Received[%2d]", ret);
 
-    LOG_HEX(rx, *rx_len, "RX[%d]", *rx_len);
+    } while (n < expected_len);
+
+    *rx_len = n;
+
+    LOG_HEX(rx, *rx_len, "RX[%2d]", *rx_len);
 
     return 0;
 }
@@ -176,8 +187,6 @@ static void uart_logic_channel_close(uint8_t channel)
     rx_len = sizeof(rx);
 
     uart_transmit_lowlevel(rx, &rx_len, tx, sizeof(tx));
-
-    logic_channel = 0;
 }
 
 static int uart_logic_channel_open(const uint8_t* aid, uint8_t aid_len)
@@ -228,7 +237,6 @@ static int uart_logic_channel_open(const uint8_t* aid, uint8_t aid_len)
     switch (rx[rx_len - 2]) {
         case 0x90:
         case 0x61:
-            logic_channel = channel;
             return channel;
         default:
             goto err;
@@ -248,8 +256,6 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
     uint32_t rx_len;
 
     const char* device;
-
-    logic_channel = 0;
 
     if (!(device = getenv("AT_DEVICE"))) {
         device = "/dev/ttyUSB0";
@@ -271,7 +277,6 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
 static void apdu_interface_disconnect(struct euicc_ctx* ctx)
 {
     uart_device_close();
-    logic_channel = 0;
 }
 
 static int apdu_interface_transmit(struct euicc_ctx* ctx, uint8_t** rx, uint32_t* rx_len, const uint8_t* tx, uint32_t tx_len)
