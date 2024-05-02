@@ -140,7 +140,11 @@ static int uart_device_read(char* data, int len)
 
 static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* tx, const uint8_t tx_len)
 {
-    int ret = uart_device_write(tx, tx_len);
+    int ret;
+
+    LOG_HEX(tx, tx_len, "TX[%d]", tx_len);
+
+    ret = uart_device_write(tx, tx_len);
     if (ret != tx_len) {
         LOGE("uart device write failed!");
         return -1;
@@ -154,6 +158,8 @@ static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* 
     }
 
     *rx_len = ret;
+
+    LOG_HEX(rx, *rx_len, "RX[%d]", *rx_len);
 
     return 0;
 }
