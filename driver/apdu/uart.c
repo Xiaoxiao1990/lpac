@@ -16,6 +16,7 @@
 
 #include <euicc/hexutil.h>
 #include <euicc/interface.h>
+#include <logs.h>
 
 #define EUICC_INTERFACE_BUFSZ 264
 
@@ -35,13 +36,13 @@ static int uart_transmit_lowlevel(uint8_t* rx, uint32_t* rx_len, const uint8_t* 
 
     n = fwrite(tx, 1, tx_len, fuart);
     if (n != tx_len) {
-        fprintf(stderr, "Failed to write to device!\n");
+        LOGE("Failed to write to device!");
         return -1;
     }
 
     n = fread(rx, 1, EUICC_INTERFACE_BUFSZ, fuart);
     if (n == 0) {
-        fprintf(stderr, "Failed to read from device!\n");
+        LOGE("Failed to read from device!");
         return -1;
     }
 
@@ -143,9 +144,11 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
 
     fuart = fopen(device, "r+");
     if (fuart == NULL) {
-        fprintf(stderr, "Failed to open device %s\n", device);
+        LOGE("Failed to open device: %s", device);
         return -1;
     }
+
+    LOGI("Opened device: %s success!", device);
 
     rx_len = sizeof(rx);
     uart_transmit_lowlevel(rx, &rx_len, (const uint8_t*)APDU_TERMINAL_CAPABILITIES, sizeof(APDU_TERMINAL_CAPABILITIES) - 1);
@@ -164,7 +167,7 @@ static int apdu_interface_transmit(struct euicc_ctx* ctx, uint8_t** rx, uint32_t
 {
     *rx = malloc(EUICC_INTERFACE_BUFSZ);
     if (!*rx) {
-        fprintf(stderr, "SCardTransmit() RX buffer alloc failed\n");
+        LOGE("SCardTransmit() RX buffer alloc failed");
         return -1;
     }
     *rx_len = EUICC_INTERFACE_BUFSZ;
@@ -203,13 +206,13 @@ static int libapduinterface_init(struct euicc_apdu_interface* ifstruct)
 
 static int libapduinterface_main(int argc, char** argv)
 {
-    printf("driver UART in use!\n");
+    LOGI("driver UART in use!");
     return 0;
 }
 
 static void libapduinterface_fini(void)
 {
-    printf("driver UART fini\n");
+    LOGI("driver UART fini");
 }
 
 const struct euicc_driver driver_apdu_uart = {

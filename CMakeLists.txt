@@ -42,6 +42,8 @@ if(CPACK_GENERATOR)
     include(CPack)
 endif()
 
+# add_subdirectory(basic_pack)
+
 add_subdirectory(cjson)
 add_subdirectory(euicc)
 add_subdirectory(driver)
