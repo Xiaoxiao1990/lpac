@@ -44,7 +44,7 @@ static int es10x_transmit_iter(struct euicc_ctx *ctx, struct apdu_request *req, 
         {
             int ret;
 
-            if ((ret = euicc_apdu_le(ctx, &request, APDU_CONTINUE_READ_HEADER, response.sw2)) < 0)
+            if ((ret = euicc_apdu_le(ctx, &request, APDU_CONTINUE_READ_HEADER, response.sw2 == 0x00 ? 0xFF : response.sw2)) < 0)
             {
                 return -1;
             }
