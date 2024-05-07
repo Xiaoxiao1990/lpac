@@ -40,7 +40,11 @@ static uart_t uart_device = {
 static int uart_device_open(const char* device)
 {
     uart_t* uart = &uart_device;
+
+    uart->dev_path = device;
+
     int ret = uart_init(uart, 0);
+
     if (ret != 0) {
         LOGE("uart init failed");
         return -1;
@@ -258,7 +262,7 @@ static int apdu_interface_connect(struct euicc_ctx* ctx)
     const char* device;
 
     if (!(device = getenv("AT_DEVICE"))) {
-        device = "/dev/ttyUSB0";
+        device = "/dev/ttyUSB1";
     }
 
     if (uart_device_open(device) < 0) {
